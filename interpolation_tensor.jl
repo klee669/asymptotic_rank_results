@@ -4,14 +4,14 @@ import Pkg; Pkg.add("Distributions")
 import Pkg; Pkg.add("JLD2")
 import Pkg; Pkg.add("Arblib")
 import Pkg; Pkg.add("GenericLinearAlgebra")
-import Pkg; Pkg.add("KrylovKit")
+import Pkg; Pkg.add("Combinatorics")
 using HomotopyContinuation
 using LinearAlgebra
 using Distributions
 using JLD2
 using Arblib
 using GenericLinearAlgebra
-using KrylovKit
+using Combinatorics
 
 using Base.Threads
 @show(Threads.nthreads())
@@ -110,8 +110,54 @@ InterpretedSystem(F) # this takes not so long anymore
 
 
 
-@load "monodromy_results.jld2" sols
-@load "p0_param.jld2" p0
+
+res = 
+monodromy_solve(in_sys, [x0; t0], p0; target_solutions_count 
+= 10000)
+flush(stdout)
+
+
+sols = solutions(res)
+
+function shape_solutions(sols)
+    sol_list = [];
+    for sol in sols
+        locator=1;
+        reshaped_sol = [];
+            sol_a = sol[locator:locator+r*(as-1)-1];
+            locator = locator + r*(as-1);
+            sol_b = sol[locator:locator+r*(bs-1)-1];
+            locator = locator + r*(bs-1);
+            sol_c = sol[locator:locator+r*cs-1];
+            reshaped_sol = vec([sol_a; sol_b; sol_c])
+        push!(sol_list, reshaped_sol)
+    end
+    return sol_list
+end
+ssols = shape_solutions(sols)
+images = map(i -> evaluate(T, vec([a b c]) => i), ssols)
+
+function group_similar_vectors(vectors; tol=1e-8)
+    groups = Dict()
+    for (i, v) in enumerate(vectors)
+        found = false
+        for (key, _) in groups
+            if maximum(abs.(v - key)) < tol
+                groups[key] = push!(groups[key], i)
+                found = true
+                break
+            end
+        end
+	if !found
+            groups[v] = [i]
+        end
+    end
+    return groups
+end
+
+groups = group_similar_vectors(images)
+unique_indices = [indices[1] for indices in values(groups)]
+
 
 
 import HomotopyContinuation: CertificationCache, CertificationParameters, 
@@ -139,7 +185,6 @@ refined_certs = map(((i, sol),) -> begin
 end, enumerate(sols));
 
 @show("refining done!")
-@load "unique_indices.jld2" unique_indices
 unique_preimages = refined_certs[unique_indices];
 
 
@@ -165,7 +210,7 @@ end
 
 unique_preimages = to_bigfloat_certs(unique_preimages)
 
-t_coords = map(i -> i[end-1:end], unique_preimages);#extract_t_coords(sols, r, as, bs, cs, cdim)
+t_coords = map(i -> i[end-(cdim-1):end], unique_preimages);#extract_t_coords(sols, r, as, bs, cs, cdim)
 homogeneous_coords = map(t -> [t; 1], t_coords);
 
 
