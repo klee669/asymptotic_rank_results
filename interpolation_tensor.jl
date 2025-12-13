@@ -283,37 +283,16 @@ flush(stdout)
 @show("building matrix is about to begin")
 flush(stdout)
 
-
-
 M = build_interpolation_matrix_fast(homogeneous_coords, 76);
-flush(stdout)
 
-function σ_min_estimate_lanczos(M; maxiter=500, tol=big"1e-30")
-    n = size(M, 2)
+F = qr(M, ColumnNorm())
+d = abs.(diag(F.R))
+d_min = minimum(d)
 
-    function Bmul(v)
-        return M' * (M * v)
-    end
+println("QR-based min diag ≈ ", d_min)
 
-    v0 = randn(Complex{BigFloat}, n)
-
-    λs, vs, info = eigsolve(
-        Bmul,
-        v0,
-        1,
-        :SR,
-        Lanczos();                # ★ 알고리즘을 직접 지정
-        issymmetric=true,
-        ishermitian=true,
-        maxiter=maxiter,
-        tol=tol,
-    )
-
-    λ_min = λs[1]
-    σ_min = sqrt(λ_min)
-    return σ_min, info
+if d_min > big"1e-40"
+    println("Numerically nonsingular ✔ ")
+else
+    println("Near-singular or singular-ish ✘ ")
 end
-
-
-σmin, info = σ_min_estimate_lanczos(M)
-@show σmin
