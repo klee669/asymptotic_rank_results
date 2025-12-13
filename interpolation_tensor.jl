@@ -1,14 +1,12 @@
 import Pkg; Pkg.add("HomotopyContinuation")
 import Pkg; Pkg.add("LinearAlgebra")
 import Pkg; Pkg.add("Distributions")
-import Pkg; Pkg.add("JLD2")
 import Pkg; Pkg.add("Arblib")
 import Pkg; Pkg.add("GenericLinearAlgebra")
 import Pkg; Pkg.add("Combinatorics")
 using HomotopyContinuation
 using LinearAlgebra
 using Distributions
-using JLD2
 using Arblib
 using GenericLinearAlgebra
 using Combinatorics
@@ -99,6 +97,19 @@ length(t))
 x0 = 
 vec(source_point)
 fiber_slices = ll * vec([a b c]) - ll * vec(source_point)
+
+A0 = 
+rand(Uniform(0,1), N, cdim)
+
+t0 = 
+rand(Uniform(0,1), cdim)
+
+B0 = 
+TF(x0) - A0 * t0
+
+p0 = 
+vec([A0 B0])
+
 F = 
 System([T - L; fiber_slices], variables 
 = vars, parameters = params)
@@ -337,7 +348,7 @@ d_min = minimum(d)
 println("QR-based min diag ≈ ", d_min)
 
 if d_min > big"1e-40"
-    println("Numerically nonsingular ✔ ")
+    println("Numerically nonsingular")
 else
-    println("Near-singular or singular-ish ✘ ")
+    println("Near-singular")
 end
